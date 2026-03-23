@@ -1,5 +1,3 @@
-import { ProjectData } from '../types'; // Adjust if types were moved, or just keep interface locally
-
 
 export interface ProjectData {
     id?: string;
