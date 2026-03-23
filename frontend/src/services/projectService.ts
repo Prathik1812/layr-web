@@ -1,17 +1,5 @@
-import { db } from './firebase';
-import {
-    collection,
-    doc,
-    addDoc,
-    updateDoc,
-    getDoc,
-    getDocs,
-    deleteDoc,
-    query,
-    where,
-    serverTimestamp,
-    Timestamp
-} from 'firebase/firestore';
+import { ProjectData } from '../types'; // Adjust if types were moved, or just keep interface locally
+
 
 export interface ProjectData {
     id?: string;
@@ -32,11 +20,13 @@ export interface ProjectData {
     };
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+
 export const projectService = {
     // Create new project
     async createProject(userId: string, title: string = 'Untitled Project'): Promise<string> {
         try {
-            const response = await fetch('/api/projects', {
+            const response = await fetch(`${API_BASE_URL}/api/projects`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -63,7 +53,7 @@ export const projectService = {
             const currentProject = await this.getProject(projectId);
             if (!currentProject) throw new Error("Project not found");
 
-            await fetch(`/api/projects/${projectId}`, {
+            await fetch(`${API_BASE_URL}/api/projects/${projectId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -83,7 +73,7 @@ export const projectService = {
             const currentProject = await this.getProject(projectId);
             if (!currentProject) throw new Error("Project not found");
 
-            await fetch(`/api/projects/${projectId}`, {
+            await fetch(`${API_BASE_URL}/api/projects/${projectId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -100,7 +90,7 @@ export const projectService = {
     // Load full project
     async getProject(projectId: string): Promise<ProjectData | null> {
         try {
-            const response = await fetch(`/api/projects/${projectId}`);
+            const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}`);
             if (!response.ok) return null;
             const project = await response.json();
             
@@ -123,7 +113,7 @@ export const projectService = {
     async getUserProjects(userId: string): Promise<ProjectData[]> {
         if (!userId) return [];
         try {
-            const response = await fetch(`/api/projects?userId=${userId}`);
+            const response = await fetch(`${API_BASE_URL}/api/projects?userId=${userId}`);
             const projects = await response.json();
             
             return projects.map((p: any) => {
@@ -143,7 +133,7 @@ export const projectService = {
     // Delete project
     async deleteProject(projectId: string): Promise<void> {
         try {
-            await fetch(`/api/projects/${projectId}`, {
+            await fetch(`${API_BASE_URL}/api/projects/${projectId}`, {
                 method: 'DELETE'
             });
         } catch (error) {
