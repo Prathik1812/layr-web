@@ -17,9 +17,9 @@ export interface ProjectData {
     id?: string;
     userId: string;
     title: string;
-    createdAt?: Timestamp;
-    updatedAt?: object;
-    data: {
+    createdAt?: string; // Changed from Timestamp to string for JSON compatibility
+    updatedAt?: string;
+    data: string | { // Backend stores as String (JSON)
         story: any;
         ia: {
             nodes: any[];
@@ -32,40 +32,25 @@ export interface ProjectData {
     };
 }
 
-const PROJECTS_COLLECTION = 'projects';
-
 export const projectService = {
     // Create new project
     async createProject(userId: string, title: string = 'Untitled Project'): Promise<string> {
         try {
-            console.log("createProject called for user:", userId);
-
-            const projectData = {
-                userId,
-                title,
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-                data: {
-                    story: null,
-                    ia: { nodes: [], edges: [] },
-                    userflow: { nodes: [], edges: [] }
-                }
-            };
-
-            console.log("DB Instance:", db);
-            console.log("DB Type:", db ? typeof db : "null/undefined");
-
-            if (!db || Object.keys(db).length === 0) {
-                console.error("DB IS EMPTY/INVALID!");
-                throw new Error("Firestore DB instance is invalid/empty.");
-            }
-
-            const colRef = collection(db, PROJECTS_COLLECTION);
-            console.log("Collection Ref:", colRef);
-
-            const docRef = await addDoc(colRef, projectData);
-            console.log("Project created with ID:", docRef.id);
-            return docRef.id;
+            const response = await fetch('/api/projects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId,
+                    title,
+                    data: JSON.stringify({
+                        story: null,
+                        ia: { nodes: [], edges: [] },
+                        userflow: { nodes: [], edges: [] }
+                    })
+                })
+            });
+            const project = await response.json();
+            return project.id.toString();
         } catch (error) {
             console.error('Error creating project:', error);
             throw error;
@@ -73,12 +58,18 @@ export const projectService = {
     },
 
     // Save/Update full project data
-    async saveProject(projectId: string, data: ProjectData['data']): Promise<void> {
+    async saveProject(projectId: string, data: any): Promise<void> {
         try {
-            const projectRef = doc(db, PROJECTS_COLLECTION, projectId);
-            await updateDoc(projectRef, {
-                data,
-                updatedAt: serverTimestamp()
+            const currentProject = await this.getProject(projectId);
+            if (!currentProject) throw new Error("Project not found");
+
+            await fetch(`/api/projects/${projectId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: currentProject.title,
+                    data: typeof data === 'string' ? data : JSON.stringify(data)
+                })
             });
         } catch (error) {
             console.error('Error saving project:', error);
@@ -89,10 +80,16 @@ export const projectService = {
     // Update just the title
     async updateProjectTitle(projectId: string, title: string): Promise<void> {
         try {
-            const projectRef = doc(db, PROJECTS_COLLECTION, projectId);
-            await updateDoc(projectRef, {
-                title,
-                updatedAt: serverTimestamp()
+            const currentProject = await this.getProject(projectId);
+            if (!currentProject) throw new Error("Project not found");
+
+            await fetch(`/api/projects/${projectId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title,
+                    data: typeof currentProject.data === 'string' ? currentProject.data : JSON.stringify(currentProject.data)
+                })
             });
         } catch (error) {
             console.error('Error updating project title:', error);
@@ -103,14 +100,19 @@ export const projectService = {
     // Load full project
     async getProject(projectId: string): Promise<ProjectData | null> {
         try {
-            const docRef = doc(db, PROJECTS_COLLECTION, projectId);
-            const docSnap = await getDoc(docRef);
-
-            if (docSnap.exists()) {
-                return { id: docSnap.id, ...docSnap.data() } as ProjectData;
-            } else {
-                return null;
+            const response = await fetch(`/api/projects/${projectId}`);
+            if (!response.ok) return null;
+            const project = await response.json();
+            
+            // Parse data if it's a string
+            if (typeof project.data === 'string') {
+                try {
+                    project.data = JSON.parse(project.data);
+                } catch (e) {
+                    console.error("Error parsing project data", e);
+                }
             }
+            return project as ProjectData;
         } catch (error) {
             console.error('Error getting project:', error);
             throw error;
@@ -119,28 +121,18 @@ export const projectService = {
 
     // List user projects
     async getUserProjects(userId: string): Promise<ProjectData[]> {
-        if (!userId) {
-            console.warn("getUserProjects called with empty userId");
-            return [];
-        }
+        if (!userId) return [];
         try {
-            const q = query(
-                collection(db, PROJECTS_COLLECTION),
-                where("userId", "==", userId)
-            );
-
-            const querySnapshot = await getDocs(q);
-            const projects: ProjectData[] = [];
-
-            querySnapshot.forEach((doc) => {
-                projects.push({ id: doc.id, ...doc.data() } as ProjectData);
-            });
-
-            // Sort client-side for simplicity if index not ready
-            return projects.sort((a, b) => {
-                const tA = (a.updatedAt as Timestamp)?.toMillis?.() || 0;
-                const tB = (b.updatedAt as Timestamp)?.toMillis?.() || 0;
-                return tB - tA; // desc
+            const response = await fetch(`/api/projects?userId=${userId}`);
+            const projects = await response.json();
+            
+            return projects.map((p: any) => {
+                if (typeof p.data === 'string') {
+                    try {
+                        p.data = JSON.parse(p.data);
+                    } catch (e) {}
+                }
+                return p;
             });
         } catch (error) {
             console.error('Error listing projects:', error);
@@ -151,10 +143,13 @@ export const projectService = {
     // Delete project
     async deleteProject(projectId: string): Promise<void> {
         try {
-            await deleteDoc(doc(db, PROJECTS_COLLECTION, projectId));
+            await fetch(`/api/projects/${projectId}`, {
+                method: 'DELETE'
+            });
         } catch (error) {
             console.error('Error deleting project:', error);
             throw error;
         }
     }
 };
+
