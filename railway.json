@@ -7,7 +7,7 @@
   },
   "deploy": {
     "startCommand": "java -jar backend/target/*.jar",
-    "healthCheckPath": "/api/projects?userId=health",
-    "healthCheckTimeout": 120
+    "healthcheckPath": "/api/projects?userId=health",
+    "healthcheckTimeout": 120
   }
 }
