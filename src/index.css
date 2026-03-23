@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 5%;
+    /* Deep dark, almost black #0d0d0d */
+    --foreground: 0 0% 95%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 95%;
+    --primary: 0 0% 100%;
+    /* Stark white accent from image */
+    --primary-foreground: 0 0% 0%;
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 60%;
+    --border: 0 0% 20%;
+    /* Subtle tech lines */
+    --radius: 0.5rem;
+    /* Slightly boxier, less rounded */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border box-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased selection:bg-white/20 selection:text-white;
+    /* Grid Pattern - Technical hair-lines */
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 100px 100px;
+    background-position: center top;
+  }
+
+  /* Technical Crosshairs for corners */
+  .crosshair-corner {
+    position: relative;
+  }
+
+  .crosshair-corner::before,
+  .crosshair-corner::after {
+    content: '';
+    position: absolute;
+    background: white;
+  }
+}
+
+/* Custom Utilities for Animations */
+@layer utilities {
+  .animate-in {
+    animation-duration: 0.3s;
+    animation-fill-mode: forwards;
+    animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .fade-in {
+    animation-name: fadeIn;
+  }
+
+  .zoom-in-95 {
+    animation-name: zoomIn95;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes zoomIn95 {
+    from {
+      transform: scale(0.98);
+    }
+
+    to {
+      transform: scale(1);
+    }
+  }
+}
